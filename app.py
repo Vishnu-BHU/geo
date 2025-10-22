@@ -206,7 +206,7 @@ def render_inputs(feature_names, ranges_data):
     # Disturbance factor via dropdown
     vals["D"] = D_VALS[st.selectbox(INPUT_LABELS["D_VAL"], list(D_VALS.keys()), help=rng_help("D", ranges_data))]
 
-    # Poisson's Ratio — allow edge case exactly at upper bound
+    # Poisson's Ratio
     mn, mx = get_bounds("PoissonsRatio", ranges_data)
     with colRight:
         vals["PoissonsRatio"] = float_input(
@@ -259,17 +259,17 @@ model, scaler_X, scaler_y = load_artifacts(entry)
 feature_names = entry.get("feature_names", FEATURE_ORDER)
 target_name = entry.get("target_name", "FoS")
 
-# Disable saturated estimate for Seismic models
+# Disable saturated estimate for Seismic models without touching session_state
 is_seismic = "seismic" in target_name.lower()
 if is_seismic:
+    # Use a different key so any prior state on 'use_saturated_estimate' cannot override the shown value
     st.checkbox(
         "Estimate FoS under Saturated condition",
         value=False,
-        key="use_saturated_estimate",
         disabled=True,
+        key="sat_disabled_view",
         help="Unavailable for Seismic models",
     )
-    st.session_state["use_saturated_estimate"] = False
     use_saturated_estimate = False
 else:
     use_saturated_estimate = st.checkbox(
@@ -287,7 +287,7 @@ else:
     if st.button(f"Predict {target_name}", type="primary"):
         try:
             y = predict_one(model, scaler_X, scaler_y, x_row)
-            if use_saturated_estimate:
+            if use_saturated_estimate and not is_seismic:
                 rng = _get_rng(None)
                 low, high = y * SAT_FACTOR_LOW, y * SAT_FACTOR_HIGH
                 y_sat = float(rng.uniform(low, high))
