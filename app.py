@@ -21,31 +21,31 @@ LOGO_URL = "https://raw.githubusercontent.com/Pandey-vhr/GeoRockSlope/main/asset
 # ----------------------------
 # Constants
 # ----------------------------
-FEATURE_ORDER = ["SlopeHeight","SlopeAngle","UCS","GSI","mi","D","PoissonsRatio","E","Density"]
+FEATURE_ORDER = ["SlopeHeight", "SlopeAngle", "UCS", "GSI", "mi", "D", "PoissonsRatio", "E", "Density"]
 
 INPUT_LABELS = {
-    "MODEL"       : "Prediction Model",
+    "MODEL": "Prediction Model",
     "SLOPE_HEIGHT": "Slope Height",
-    "SLOPE_ANGLE" : "Slope Angle",
-    "UCS"         : "Uniaxial Compressive Strength",
-    "GSI"         : "Geological Strength Index",
-    "MI"          : "Material Constant (mi)",
-    "D_VAL"       : "Disturbance Factor",
-    "PR"          : "Poisson's Ratio",
-    "YM"          : "Young’s Modulus (E) of Intact Rock",
-    "DEN"         : "Density",
+    "SLOPE_ANGLE": "Slope Angle",
+    "UCS": "Uniaxial Compressive Strength",
+    "GSI": "Geological Strength Index",
+    "MI": "Material Constant (mi)",
+    "D_VAL": "Disturbance Factor",
+    "PR": "Poisson's Ratio",
+    "YM": "Young’s Modulus (E) of Intact Rock",
+    "DEN": "Density",
 }
 
 # Fallback bounds if training_ranges.json is absent
 DEFAULT_BOUNDS = {
     "SlopeHeight": (13.0, 74.0),
-    "SlopeAngle":  (55.0, 84.0),
-    "UCS":        (42.0, 87.0),
-    "GSI":        (25, 85),
-    "mi":         (23, 35),
+    "SlopeAngle": (55.0, 84.0),
+    "UCS": (42.0, 87.0),
+    "GSI": (25, 85),
+    "mi": (23, 35),
     "PoissonsRatio": (0.15, 0.22),
-    "E":          (8783.0, 36123.0),
-    "Density":    (2.55, 2.75)
+    "E": (8783.0, 36123.0),
+    "Density": (2.55, 2.75),
 }
 
 UNITS = {
@@ -66,7 +66,7 @@ D_VALS = {
 }
 
 # Saturation factors
-SAT_FACTOR_LOW  = 0.821
+SAT_FACTOR_LOW = 0.821
 SAT_FACTOR_HIGH = 0.881
 
 # ----------------------------
@@ -130,7 +130,7 @@ def load_manifest():
     entries = []
     if MODELS_DIR.exists():
         for sub in sorted(p for p in MODELS_DIR.iterdir() if p.is_dir()):
-            m, sx, sy = sub/"model.joblib", sub/"scaler_X.joblib", sub/"scaler_y.joblib"
+            m, sx, sy = sub / "model.joblib", sub / "scaler_X.joblib", sub / "scaler_y.joblib"
             if m.exists() and sx.exists() and sy.exists():
                 entries.append({
                     "id": sub.name,
@@ -139,7 +139,7 @@ def load_manifest():
                     "scaler_X_path": str(sx),
                     "scaler_y_path": str(sy),
                     "target_name": "Seismic FoS" if ("sf" in sub.name.lower() or "seismic" in sub.name.lower()) else "FoS",
-                    "feature_names": FEATURE_ORDER
+                    "feature_names": FEATURE_ORDER,
                 })
     return entries
 
@@ -167,8 +167,7 @@ def rng_help(name, ranges_data):
     return f"Training range: {mn:g} to {mx:g}{unit}"
 
 def int_input(label, mn, mx, val, help_txt):
-    return st.number_input(label, min_value=int(mn), max_value=int(mx),
-                           value=int(val), step=1, format="%d", help=help_txt)
+    return st.number_input(label, min_value=int(mn), max_value=int(mx), value=int(val), step=1, format="%d", help=help_txt)
 
 def float_input(label, mn, mx, val, step, fmt, help_txt, epsilon=0.0):
     return st.number_input(
@@ -191,38 +190,42 @@ def render_inputs(feature_names, ranges_data):
         vals["SlopeHeight"] = float_input(INPUT_LABELS["SLOPE_HEIGHT"], mn, mx, mn, 0.1, "%.1f", rng_help("SlopeHeight", ranges_data))
     mn, mx = get_bounds("SlopeAngle", ranges_data)
     with colLeft:
-        vals["SlopeAngle"]  = float_input(INPUT_LABELS["SLOPE_ANGLE"],  mn, mx, mn, 0.1, "%.1f", rng_help("SlopeAngle", ranges_data))
+        vals["SlopeAngle"] = float_input(INPUT_LABELS["SLOPE_ANGLE"], mn, mx, mn, 0.1, "%.1f", rng_help("SlopeAngle", ranges_data))
     mn, mx = get_bounds("UCS", ranges_data)
     with colLeft:
-        vals["UCS"]         = float_input(INPUT_LABELS["UCS"],          mn, mx, mn, 0.1, "%.1f", rng_help("UCS", ranges_data))
+        vals["UCS"] = float_input(INPUT_LABELS["UCS"], mn, mx, mn, 0.1, "%.1f", rng_help("UCS", ranges_data))
     mn, mx = get_bounds("GSI", ranges_data)
     with colLeft:
-        vals["GSI"]         = int_input  (INPUT_LABELS["GSI"],          mn, mx, mn,           rng_help("GSI", ranges_data))
+        vals["GSI"] = int_input(INPUT_LABELS["GSI"], mn, mx, mn, rng_help("GSI", ranges_data))
 
     # Right column
     mn, mx = get_bounds("mi", ranges_data)
     with colRight:
-        vals["mi"]          = int_input  (INPUT_LABELS["MI"],           mn, mx, mn,           rng_help("mi", ranges_data))
+        vals["mi"] = int_input(INPUT_LABELS["MI"], mn, mx, mn, rng_help("mi", ranges_data))
 
     # Disturbance factor via dropdown
-    vals["D"] = D_VALS[st.selectbox(INPUT_LABELS["D_VAL"], list(D_VALS.keys()),
-                                    help=rng_help("D", ranges_data))]
+    vals["D"] = D_VALS[st.selectbox(INPUT_LABELS["D_VAL"], list(D_VALS.keys()), help=rng_help("D", ranges_data))]
 
     # Poisson's Ratio — allow edge case exactly at upper bound
     mn, mx = get_bounds("PoissonsRatio", ranges_data)
     with colRight:
         vals["PoissonsRatio"] = float_input(
-            INPUT_LABELS["PR"], mn, mx, mn, 0.01, "%.2f",
+            INPUT_LABELS["PR"],
+            mn,
+            mx,
+            mn,
+            0.01,
+            "%.2f",
             rng_help("PoissonsRatio", ranges_data),
-            epsilon=1e-9
+            epsilon=1e-9,
         )
 
     mn, mx = get_bounds("E", ranges_data)
     with colRight:
-        vals["E"]             = float_input(INPUT_LABELS["YM"], mn, mx, mn, 0.1, "%.1f", rng_help("E", ranges_data))
+        vals["E"] = float_input(INPUT_LABELS["YM"], mn, mx, mn, 0.1, "%.1f", rng_help("E", ranges_data))
     mn, mx = get_bounds("Density", ranges_data)
     with colRight:
-        vals["Density"]       = float_input(INPUT_LABELS["DEN"], mn, mx, mn, 0.01, "%.2f", rng_help("Density", ranges_data))
+        vals["Density"] = float_input(INPUT_LABELS["DEN"], mn, mx, mn, 0.01, "%.2f", rng_help("Density", ranges_data))
 
     x_row = [float(vals[n]) for n in feature_names]
     return vals, x_row
@@ -256,8 +259,24 @@ model, scaler_X, scaler_y = load_artifacts(entry)
 feature_names = entry.get("feature_names", FEATURE_ORDER)
 target_name = entry.get("target_name", "FoS")
 
-# Only additional option kept: saturated estimate
-use_saturated_estimate = st.checkbox("Estimate FoS under Saturated condition", value=False, key="use_saturated_estimate")
+# Disable saturated estimate for Seismic models
+is_seismic = "seismic" in target_name.lower()
+if is_seismic:
+    st.checkbox(
+        "Estimate FoS under Saturated condition",
+        value=False,
+        key="use_saturated_estimate",
+        disabled=True,
+        help="Unavailable for Seismic models",
+    )
+    st.session_state["use_saturated_estimate"] = False
+    use_saturated_estimate = False
+else:
+    use_saturated_estimate = st.checkbox(
+        "Estimate FoS under Saturated condition",
+        value=False,
+        key="use_saturated_estimate",
+    )
 
 values, x_row = render_inputs(feature_names, ranges)
 
