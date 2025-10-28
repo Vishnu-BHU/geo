@@ -1,4 +1,3 @@
-# app.py
 import json
 from pathlib import Path
 
@@ -6,6 +5,9 @@ import joblib
 import numpy as np
 import streamlit as st
 
+# ----------------------------
+# Page setup
+# ----------------------------
 st.set_page_config(page_title="🧩 GeoRockSlope", page_icon="🪨", layout="centered")
 
 # ----------------------------
@@ -16,8 +18,12 @@ MODELS_DIR = BASE / "models"
 MANIFEST_PATH = MODELS_DIR / "models_manifest.json"
 RANGES_PATH = BASE / "training_ranges.json"
 
-LOGO_URL = "https://raw.githubusercontent.com/Pandey-vhr/GeoRockSlope/main/assets/GECL.png"
-
+# ----------------------------
+# Logos
+# ----------------------------
+LOGO_URL_1 = "https://github.com/Vishnu-BHU/geo/blob/main/assets/ANRF.png?raw=true"
+LOGO_URL_2 = "https://github.com/Vishnu-BHU/geo/blob/main/assets/GECL.png?raw=true"
+LOGO_URL_3 = "https://github.com/Vishnu-BHU/geo/blob/main/assets/bhu.png?raw=true"
 
 # ----------------------------
 # Constants
@@ -37,7 +43,6 @@ INPUT_LABELS = {
     "DEN": "Density",
 }
 
-# Fallback bounds if training_ranges.json is absent
 DEFAULT_BOUNDS = {
     "SlopeHeight": (13.0, 74.0),
     "SlopeAngle": (55.0, 84.0),
@@ -66,19 +71,32 @@ D_VALS = {
     "Very Disturbed Rock Mass": 1.0,
 }
 
-# Saturation factors
 SAT_FACTOR_LOW = 0.821
 SAT_FACTOR_HIGH = 0.881
 
 # ----------------------------
-# Header with logo
+# Header with multiple logos
 # ----------------------------
-def header_with_logo(title: str = "GeoRockSlope", logo_width: int = 96):
-    col1, col2 = st.columns([0.8, 0.2])
-    with col1:
+def header_with_logo(title: str = "GeoRockSlope", logo_width: int = 96, logo_urls: list[str] | None = None):
+    """Display title and one or more logos in a single header row."""
+    if logo_urls is None:
+        logo_urls = [LOGO_URL_1]
+
+    # Allocate column weights: larger for title, smaller evenly for logos
+    title_weight = 0.8
+    if len(logo_urls) > 0:
+        remaining = 1.0 - title_weight
+        logo_weight = remaining / len(logo_urls)
+        weights = [title_weight] + [logo_weight] * len(logo_urls)
+    else:
+        weights = [1.0]
+
+    cols = st.columns(weights)
+    with cols[0]:
         st.markdown(f"<h1 style='margin:0'>{title}</h1>", unsafe_allow_html=True)
-    with col2:
-        st.image(LOGO_URL, width=logo_width)
+    for i, url in enumerate(logo_urls):
+        with cols[i + 1]:
+            st.image(url, width=logo_width)
 
 # ----------------------------
 # Persistent RNG for saturated estimate
@@ -116,7 +134,6 @@ def _pretty_model_name(folder_name: str) -> str:
 
 @st.cache_resource
 def load_manifest():
-    # 1) Explicit manifest
     if MANIFEST_PATH.exists():
         try:
             data = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
@@ -127,7 +144,6 @@ def load_manifest():
         except Exception as e:
             st.warning(f"Manifest read error: {e}")
 
-    # 2) Auto-discover subfolders with model and scalers
     entries = []
     if MODELS_DIR.exists():
         for sub in sorted(p for p in MODELS_DIR.iterdir() if p.is_dir()):
@@ -185,7 +201,6 @@ def render_inputs(feature_names, ranges_data):
     colLeft, colRight = st.columns(2)
     vals = {}
 
-    # Left column
     mn, mx = get_bounds("SlopeHeight", ranges_data)
     with colLeft:
         vals["SlopeHeight"] = float_input(INPUT_LABELS["SLOPE_HEIGHT"], mn, mx, mn, 0.1, "%.1f", rng_help("SlopeHeight", ranges_data))
@@ -199,27 +214,15 @@ def render_inputs(feature_names, ranges_data):
     with colLeft:
         vals["GSI"] = int_input(INPUT_LABELS["GSI"], mn, mx, mn, rng_help("GSI", ranges_data))
 
-    # Right column
     mn, mx = get_bounds("mi", ranges_data)
     with colRight:
         vals["mi"] = int_input(INPUT_LABELS["MI"], mn, mx, mn, rng_help("mi", ranges_data))
 
-    # Disturbance factor via dropdown
     vals["D"] = D_VALS[st.selectbox(INPUT_LABELS["D_VAL"], list(D_VALS.keys()), help=rng_help("D", ranges_data))]
 
-    # Poisson's Ratio
     mn, mx = get_bounds("PoissonsRatio", ranges_data)
     with colRight:
-        vals["PoissonsRatio"] = float_input(
-            INPUT_LABELS["PR"],
-            mn,
-            mx,
-            mn,
-            0.01,
-            "%.2f",
-            rng_help("PoissonsRatio", ranges_data),
-            epsilon=1e-9,
-        )
+        vals["PoissonsRatio"] = float_input(INPUT_LABELS["PR"], mn, mx, mn, 0.01, "%.2f", rng_help("PoissonsRatio", ranges_data), epsilon=1e-9)
 
     mn, mx = get_bounds("E", ranges_data)
     with colRight:
@@ -241,7 +244,7 @@ def predict_one(model, scaler_X, scaler_y, row_vals):
 # ----------------------------
 # Page layout
 # ----------------------------
-header_with_logo()
+header_with_logo(logo_urls=[LOGO_URL_1, LOGO_URL_2, LOGO_URL_3], logo_width=96)
 
 ranges = load_ranges()
 models = load_manifest()
@@ -251,7 +254,6 @@ if not models:
     st.caption(f"Looking in: {MODELS_DIR}")
     st.stop()
 
-# Model selection
 choices = {m["name"]: m for m in models}
 chosen = st.selectbox(INPUT_LABELS["MODEL"], list(choices.keys()))
 entry = choices[chosen]
@@ -260,28 +262,15 @@ model, scaler_X, scaler_y = load_artifacts(entry)
 feature_names = entry.get("feature_names", FEATURE_ORDER)
 target_name = entry.get("target_name", "FoS")
 
-# Disable saturated estimate for Seismic models without touching session_state
 is_seismic = "seismic" in target_name.lower()
 if is_seismic:
-    # Use a different key so any prior state on 'use_saturated_estimate' cannot override the shown value
-    st.checkbox(
-        "Estimate FoS under Saturated condition",
-        value=False,
-        disabled=True,
-        key="sat_disabled_view",
-        help="Unavailable for Seismic models",
-    )
+    st.checkbox("Estimate FoS under Saturated condition", value=False, disabled=True, key="sat_disabled_view", help="Unavailable for Seismic models")
     use_saturated_estimate = False
 else:
-    use_saturated_estimate = st.checkbox(
-        "Estimate FoS under Saturated condition",
-        value=False,
-        key="use_saturated_estimate",
-    )
+    use_saturated_estimate = st.checkbox("Estimate FoS under Saturated condition", value=False, key="use_saturated_estimate")
 
 values, x_row = render_inputs(feature_names, ranges)
 
-# Predict
 if hasattr(scaler_X, "n_features_in_") and scaler_X.n_features_in_ != len(x_row):
     st.error(f"Feature count mismatch: scaler expects {scaler_X.n_features_in_}, got {len(x_row)}")
 else:
