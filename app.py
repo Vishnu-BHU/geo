@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-
 import joblib
 import numpy as np
 import streamlit as st
@@ -19,7 +18,7 @@ MANIFEST_PATH = MODELS_DIR / "models_manifest.json"
 RANGES_PATH = BASE / "training_ranges.json"
 
 # ----------------------------
-# Logos
+# Logo URLs
 # ----------------------------
 LOGO_URL_1 = "https://github.com/Vishnu-BHU/geo/blob/main/assets/ANRF.png?raw=true"
 LOGO_URL_2 = "https://github.com/Vishnu-BHU/geo/blob/main/assets/GECL.png?raw=true"
@@ -75,28 +74,55 @@ SAT_FACTOR_LOW = 0.821
 SAT_FACTOR_HIGH = 0.881
 
 # ----------------------------
-# Header with multiple logos
+# Header with uniform logo sizes
 # ----------------------------
-def header_with_logo(title: str = "GeoRockSlope", logo_width: int = 96, logo_urls: list[str] | None = None):
-    """Display title and one or more logos in a single header row."""
+def header_with_logo(title: str = "GeoRockSlope", logo_height: int = 56, logo_urls: list[str] | None = None):
+    """Display the title with multiple uniformly sized logos."""
     if logo_urls is None:
-        logo_urls = [LOGO_URL_1]
+        logo_urls = []
 
-    # Allocate column weights: larger for title, smaller evenly for logos
-    title_weight = 0.8
-    if len(logo_urls) > 0:
-        remaining = 1.0 - title_weight
-        logo_weight = remaining / len(logo_urls)
-        weights = [title_weight] + [logo_weight] * len(logo_urls)
-    else:
-        weights = [1.0]
+    # Inject CSS for consistent layout
+    st.markdown(
+        f"""
+        <style>
+        .grs-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }}
+        .grs-title {{
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }}
+        .grs-logos {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        .grs-logos img {{
+            height: {logo_height}px;
+            width: auto;
+            object-fit: contain;
+            background: transparent;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    cols = st.columns(weights)
-    with cols[0]:
-        st.markdown(f"<h1 style='margin:0'>{title}</h1>", unsafe_allow_html=True)
-    for i, url in enumerate(logo_urls):
-        with cols[i + 1]:
-            st.image(url, width=logo_width)
+    logos_html = "".join([f'<img src="{url}" alt="logo">' for url in logo_urls])
+
+    st.markdown(
+        f"""
+        <div class="grs-header">
+            <h1 class="grs-title">{title}</h1>
+            <div class="grs-logos">{logos_html}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ----------------------------
 # Persistent RNG for saturated estimate
@@ -244,7 +270,10 @@ def predict_one(model, scaler_X, scaler_y, row_vals):
 # ----------------------------
 # Page layout
 # ----------------------------
-header_with_logo(logo_urls=[LOGO_URL_1, LOGO_URL_2, LOGO_URL_3], logo_width=96)
+header_with_logo(
+    logo_urls=[LOGO_URL_1, LOGO_URL_2, LOGO_URL_3],
+    logo_height=56,
+)
 
 ranges = load_ranges()
 models = load_manifest()
