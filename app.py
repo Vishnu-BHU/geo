@@ -17,6 +17,7 @@ MANIFEST_PATH = MODELS_DIR / "models_manifest.json"
 RANGES_PATH = BASE / "training_ranges.json"
 
 LOGO_URL = "https://raw.githubusercontent.com/Pandey-vhr/GeoRockSlope/main/assets/GECL.png"
+LOGO_URL = "https://github.com/Vishnu-BHU/geo/blob/main/assets/ANRF.png"
 
 # ----------------------------
 # Constants
